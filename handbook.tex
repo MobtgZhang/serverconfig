@@ -644,6 +644,7 @@ sudo apt install nvidia-cudnn
 \end{lstlisting}
 
 \subsection{AMD显卡深度学习环境配置（选看）}
+\subsubsection{基本安装方式}
 AMD显卡也是可以进行深度学习环境搭建的，对于RX5700, RX6600, RX6750xt, RX7900XTX等这些系列的显卡均可以进行深度学习环境搭建。这里以最新版本ROCM5.7.1为例子。
 首先，下载并转换包签名密钥
 \begin{lstlisting}[language=bash]
@@ -685,7 +686,50 @@ sudo reboot
   \label{fig:ubuntu-rocm-smi}
 \end{figure}
 
+下面以手写数字识别为例子，用ROCM加速库来训练深度学习模型：
+\begin{figure}[hbpt]
+  \centering
+  \includegraphics[width=0.8\textwidth]{rocm2.jpg}
+  \caption{手写数字识别例子}
+  \label{fig:ubuntu-mnist}
+\end{figure}
+
 详细的安装教程可以参考其官网\footnote{\url{https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html}}。
+\subsubsection{出现的一些问题}
+有些情况下会出现以下的问题，安装好ROCM之后并不能正常运行加速库：
+\begin{lstlisting}[language=bash]
+  RuntimeError: HIP error: invalid device function
+\end{lstlisting}
+
+一般来说，对于RAND架构的加速库需要设置以下的环境变量，适合于低版本系列：
+\begin{lstlisting}[language=bash]
+  export PYTORCH_ROCM_ARCH="gfx960a"
+  export HSA_OVERRIDE_GFX_VERSION=9.6.0
+  export HIP_VISIBLE_DEVICES=0
+  export GFX_ARCH="gfx960a"
+\end{lstlisting}
+
+
+对于RAND2架构的加速库需要设置以下的环境变量，例如RX6750xt，RX6600系列等：
+\begin{lstlisting}[language=bash]
+  export PYTORCH_ROCM_ARCH="gfx1030"
+  export GFX_ARCH="gfx1030"
+  export HSA_OVERRIDE_GFX_VERSION=10.3.0
+  # 有些卡需要写成下面的
+  export PYTORCH_ROCM_ARCH="gfx1031"
+  export GFX_ARCH="gfx1031"
+  export HSA_OVERRIDE_GFX_VERSION=10.3.1
+  export HIP_VISIBLE_DEVICES=0
+\end{lstlisting}
+
+对于RAND2架构的加速库需要设置以下的环境变量，例如RX7900xt，RX7900xtx系列等：
+\begin{lstlisting}[language=bash]
+  export PYTORCH_ROCM_ARCH="gfx1100"
+  export HSA_OVERRIDE_GFX_VERSION=11.0.0
+  export HIP_VISIBLE_DEVICES=0
+  export GFX_ARCH="gfx1100"
+\end{lstlisting}
+
 
 \subsection{华为昇腾Altas300系列AI加速卡深度学习环境配置（选看）}
 （待补充）
@@ -2200,17 +2244,49 @@ Typst LSP 是 Typst 的语言服务器，Typst Preview 是 Typst 的预览插件
 然后就可以使用Typst了，Typst的语法与LaTeX类似，但是更加简洁，更加容易上手。
 
 \section{大模型部署方法}
-\subsection{普通CPU部署方法（全平台）}
-\subsection{使用Intel 处理器部署（Intel 10代以上CPU）}
-\subsection{使用NVIDIA处理器部署（显存至少16GB以上）}
-\subsection{使用华为Altas300I推理卡部署（选看）}
-\subsection{使用摩尔线程S80部署（选看）}
+%\subsection{普通CPU部署方法（全平台）}
+% \subsection{使用Intel 处理器部署（Intel 10代以上CPU）}
+%\subsection{使用NVIDIA处理器部署（显存至少16GB以上）}
+%\subsection{使用华为Altas300I推理卡部署（选看）}
+%\subsection{使用摩尔线程S80部署（选看）}
+\subsection{使用vllm进行模型推理部署}
+\section{制作自己的Linux rootfs}
+\subsection{Debian系}
+创建一个Debian根文件系统（rootfs）可以用于多种目的，例如为嵌入式设备、虚拟机或容器准备环境。
+这里是一个基本的步骤指南来创建一个Debian rootfs，下面则详细介绍如何来构造这样的一个嵌入式文件系统。
+\subsubsection{准备工作}
+\paragraph{安装必要的工具}
+\begin{itemize}
+  \item debootstrap 是一个用来创建Debian基础系统的工具；
+  \item qemu-user-static 如果你需要为不同的架构创建rootfs（例如在x86机器上为ARM架构创建rootfs）。
+\end{itemize}
+在Debian或Ubuntu系统中，你可以使用以下命令安装这些工具：
+\begin{lstlisting}[language=bash]
+  sudo apt-get update
+  sudo apt-get install debootstrap qemu-user-static
+\end{lstlisting}
+\paragraph{创建根文件系统}
+选择目标目录：
+决定你想要创建rootfs的位置。
+对于将系统安装到磁盘分区中，可以使用以下的命令将磁盘挂载到对应目录上。
+\begin{lstlisting}[language=bash]
+  sudo mkdir -p /mnt/debian-rootfs
+  sudo mount /dev/sdXY /mnt/debian-rootfs
+\end{lstlisting}
+这里注意Linux系统中磁盘的标记方式，/dev/sdXY 表示第X个硬盘的第Y个分区。
+对于固态硬盘一般表示为以下的形式：/dev/nvme0nXpY 表示第X硬盘的第Y个分区。
 
+有些情况下，可以制作img文件系统，其中操作方法如下所示：
+安装对应的工具：
+\begin{lstlisting}[language=bash]
+  sudo apt install kpartx
+\end{lstlisting}
+
+\subsection{Fedora系}
 \nocite{*}
 %\printbibliography[heading=bibintoc, title=\ebibname]
 
 %\appendix
 %\appendixpage
 %\addappheadtotoc
-
 \end{document}
